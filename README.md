@@ -4,10 +4,14 @@ A client-side web application for comparing elevation profiles of two GPX tracks
 
 ## Features
 
-- 📊 **Side-by-side elevation comparison** - Overlay two GPX tracks on a single chart
-- 📏 **Automatic normalization** - Scales both tracks to the longer track's distance
-- 📈 **Track statistics** - View distance, elevation gain, and max elevation for each track
-- 🎨 **Interactive charts** - Hover to see exact elevation at any point
+- 📊 **Dual-chart comparison** - View tracks separately with common baseline and distance scale
+- 📏 **Relative elevation** - Both tracks start at 0m for easy comparison regardless of absolute elevation
+- 🏔️ **Automatic climb detection** - Identifies climbs >100m gain with >3% gradient
+- 🔍 **Climb matching** - Finds similar climbs between tracks for training comparison
+- 📈 **Climb statistics** - View gain, distance, gradient, and difficulty for each climb
+- 🎨 **Visual highlighting** - Climbs are shaded on charts with numbered badges
+- 📊 **Track statistics** - View distance, elevation gain, and max elevation for each track
+- 🎯 **Interactive charts** - Hover to see exact elevation at any point
 - 🔒 **Privacy-focused** - All processing happens in your browser, no data uploaded
 
 ## Quick Start
@@ -43,9 +47,26 @@ Then open: `http://localhost:8000`
 
 1. Click on "Track 1" area and select your first GPX file
 2. Click on "Track 2" area and select your second GPX file
-3. The elevation profiles will automatically display overlaid on the chart
+3. The elevation profiles will automatically display in two stacked charts with:
+   - Relative elevation from each track's starting point
+   - Common distance scale for easy comparison
+   - Shaded regions highlighting detected climbs
 4. View track statistics below the file inputs
-5. Hover over the chart to see exact elevations at any distance
+5. Scroll down to see detailed climb analysis:
+   - **Similar Climbs**: Matched climbs between both tracks with similarity scores
+   - **Track 1 Climbs**: All detected climbs with difficulty ratings
+   - **Track 2 Climbs**: All detected climbs with difficulty ratings
+6. Hover over the chart to see exact elevations at any distance
+
+### Climb Detection Criteria
+
+Climbs are automatically detected based on:
+- Minimum elevation gain: 100m
+- Minimum distance: 0.5km
+- Minimum average gradient: 3%
+- Allows brief descents within a climb (20m tolerance)
+
+Difficulty is calculated based on a combination of elevation gain and gradient.
 
 ## Architecture
 
@@ -55,28 +76,35 @@ The project uses a clean separation of concerns:
   - GPX parsing and validation
   - Distance calculations using Haversine formula
   - Track normalization via linear interpolation
+  - Relative elevation calculation (common baseline)
+  - Climb detection algorithm
+  - Climb matching and similarity scoring
   - Statistics computation
   
 - **`chartManager.js`** - Visualization layer (Chart.js)
-  - Chart initialization and configuration
-  - Data rendering
+  - Dual-chart initialization and configuration
+  - Data rendering with climb highlighting
+  - Visual annotations (numbered climb badges)
   - Can be swapped for D3.js or other libraries
   
 - **`app.js`** - Application coordination
   - File upload handling
-  - UI updates
+  - Climb detection and matching orchestration
+  - UI updates (stats, climb tables)
   - Error handling
 
 ## Future Enhancements
 
 Planned features for future versions:
 
-- 🎯 **Automatic climb detection** - Identify and highlight similar climbing segments
-- 🔄 **Drag-to-align** - Manually shift tracks to overlay specific segments
+- 🔄 **Drag-to-align** - Manually shift tracks horizontally to overlay specific climb segments
 - 🗺️ **Map integration** - Show tracks on a map with synchronized chart interaction
-- 📊 **Advanced statistics** - Gradient analysis, VAM (vertical meters per hour)
-- 💾 **Export comparisons** - Save comparison results
+- 📊 **Advanced statistics** - VAM (vertical meters per hour), gradient distribution analysis
+- 🎯 **Climb filtering** - Filter/sort climbs by difficulty, gain, gradient
+- 🔍 **Climb search** - Find climbs matching specific criteria (e.g., "200m gain, 8% grade")
+- 💾 **Export comparisons** - Save comparison results and climb analysis
 - 📱 **Responsive design improvements** - Better mobile experience
+- 🎨 **Custom climb thresholds** - User-configurable detection parameters
 
 ## Technical Details
 

@@ -33,13 +33,44 @@
                 </div>
             </section>
 
+            <section id="smoothing-section" class="smoothing-section hidden">
+                <h3>Elevation Smoothing</h3>
+                <p class="smoothing-description">
+                    Adjust smoothing to reduce GPS noise and match Strava-style elevation calculations.
+                    Higher values = more smoothing = lower elevation gain.
+                </p>
+                <div class="smoothing-controls">
+                    <div class="smoothing-slider-container">
+                        <label for="smoothing-slider">
+                            <span class="smoothing-label">Smoothing Level:</span>
+                            <span class="smoothing-value" id="smoothing-value">5 points</span>
+                        </label>
+                        <input type="range" id="smoothing-slider" min="0" max="15" value="5" step="1" />
+                        <div class="smoothing-markers">
+                            <span>None (Raw)</span>
+                            <span>Light</span>
+                            <span>Moderate</span>
+                            <span>Heavy</span>
+                        </div>
+                    </div>
+                    <div class="smoothing-threshold">
+                        <label for="threshold-input">
+                            <span>Minimum Gain Threshold:</span>
+                            <input type="number" id="threshold-input" min="0" max="10" value="3" step="0.5" />
+                            <span>meters</span>
+                        </label>
+                        <p class="threshold-description">Ignore elevation changes smaller than this value</p>
+                    </div>
+                </div>
+            </section>
+
             <section id="error-section" class="error-section hidden">
                 <p id="error-message"></p>
             </section>
 
             <section id="stats-section" class="stats-section hidden">
                 <div class="stat-card" id="stats1">
-                    <h3>Track 1</h3>
+                    <h3 id="track1-name">Track 1</h3>
                     <div class="stat-item">
                         <span class="stat-label">Distance:</span>
                         <span class="stat-value" id="distance1">-</span>
@@ -55,7 +86,7 @@
                 </div>
 
                 <div class="stat-card" id="stats2">
-                    <h3>Track 2</h3>
+                    <h3 id="track2-name">Track 2</h3>
                     <div class="stat-item">
                         <span class="stat-label">Distance:</span>
                         <span class="stat-value" id="distance2">-</span>
@@ -68,6 +99,13 @@
                         <span class="stat-label">Max Elevation:</span>
                         <span class="stat-value" id="max2">-</span>
                     </div>
+                </div>
+            </section>
+
+            <section id="climbs-section" class="climbs-section hidden">
+                <h2>Detected Climbs</h2>
+                <div id="climbs-content">
+                    <!-- Climb tables will be inserted here -->
                 </div>
             </section>
 

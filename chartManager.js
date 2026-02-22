@@ -6,6 +6,54 @@
 let chart1Instance = null;
 let chart2Instance = null;
 
+// Climb highlight plugin definition
+const climbHighlightPlugin = {
+    id: 'climbHighlight',
+    beforeDatasetsDraw: (chart) => {
+        if (!chart._climbRegions || chart._climbRegions.length === 0) {
+            return;
+        }
+        
+        const ctx = chart.ctx;
+        const chartArea = chart.chartArea;
+        const xScale = chart.scales.x;
+        const color = chart._climbColor || 'rgba(255, 193, 7, 0.2)';
+        
+        ctx.save();
+        
+        chart._climbRegions.forEach((climb, index) => {
+            const startX = xScale.getPixelForValue(climb.startDistance / 1000);
+            const endX = xScale.getPixelForValue(climb.endDistance / 1000);
+            
+            // Draw background rectangle
+            ctx.fillStyle = color;
+            ctx.fillRect(
+                startX,
+                chartArea.top,
+                endX - startX,
+                chartArea.bottom - chartArea.top
+            );
+            
+            // Draw climb number badge at top
+            const centerX = (startX + endX) / 2;
+            const badgeY = chartArea.top + 15;
+            
+            ctx.fillStyle = 'rgba(52, 73, 94, 0.9)';
+            ctx.beginPath();
+            ctx.arc(centerX, badgeY, 12, 0, Math.PI * 2);
+            ctx.fill();
+            
+            ctx.fillStyle = 'white';
+            ctx.font = 'bold 11px sans-serif';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText((index + 1).toString(), centerX, badgeY);
+        });
+        
+        ctx.restore();
+    }
+};
+
 /**
  * Get common x-axis configuration
  * @param {number} maxDistanceKm - Maximum distance in kilometers
@@ -112,6 +160,7 @@ export function initChart(canvasId1, canvasId2) {
     chart1Instance = new Chart(ctx1, {
         type: 'line',
         data: { datasets: [] },
+        plugins: [climbHighlightPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: true,
@@ -133,10 +182,14 @@ export function initChart(canvasId1, canvasId2) {
         }
     });
     
+    // Store climb color
+    chart1Instance._climbColor = 'rgba(255, 193, 7, 0.2)';
+    
     // Chart 2 configuration (bottom chart)
     chart2Instance = new Chart(ctx2, {
         type: 'line',
         data: { datasets: [] },
+        plugins: [climbHighlightPlugin],
         options: {
             responsive: true,
             maintainAspectRatio: true,
@@ -158,14 +211,19 @@ export function initChart(canvasId1, canvasId2) {
         }
     });
     
+    // Store climb color
+    chart2Instance._climbColor = 'rgba(255, 152, 0, 0.2)';
+    
     return { chart1: chart1Instance, chart2: chart2Instance };
 }
 
 /**
  * Update charts with normalized track data
  * @param {Object} normalizedData - Data from normalizeTracks()
+ * @param {Array} climbs1 - Optional array of climbs for track 1
+ * @param {Array} climbs2 - Optional array of climbs for track 2
  */
-export function updateChart(normalizedData) {
+export function updateChart(normalizedData, climbs1 = [], climbs2 = []) {
     if (!chart1Instance || !chart2Instance) {
         throw new Error('Charts not initialized. Call initChart() first.');
     }
@@ -176,6 +234,10 @@ export function updateChart(normalizedData) {
     // Update x-axis range for both charts
     chart1Instance.options.scales.x.max = maxDistanceKm;
     chart2Instance.options.scales.x.max = maxDistanceKm;
+    
+    // Store climbs for highlighting
+    chart1Instance._climbRegions = climbs1;
+    chart2Instance._climbRegions = climbs2;
     
     // Update Chart 1 (Track 1)
     chart1Instance.data.datasets = [{
