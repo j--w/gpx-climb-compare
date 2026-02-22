@@ -419,26 +419,42 @@ export function detectClimbs(distances, elevations, options = {}) {
 
 /**
  * Calculate maximum gradient in a segment
- * @param {Array} distances - Array of distances
- * @param {Array} elevations - Array of elevations
+ * @param {Array} distances - Array of distances in meters
+ * @param {Array} elevations - Array of elevations in meters
  * @param {number} startIndex - Start index
  * @param {number} endIndex - End index
  * @returns {number} Maximum gradient in %
  */
 function calculateMaxGradient(distances, elevations, startIndex, endIndex) {
     let maxGradient = 0;
-    const windowSize = 10; // Look at 10-point windows for max gradient
+    const windowDistance = 100; // Use 100-meter windows for more reliable gradient calculation
     
-    for (let i = startIndex; i < endIndex - windowSize; i++) {
-        const elevGain = elevations[i + windowSize] - elevations[i];
-        const dist = distances[i + windowSize] - distances[i];
-        if (dist > 0) {
-            const gradient = (elevGain / dist) * 100;
-            maxGradient = Math.max(maxGradient, gradient);
+    for (let i = startIndex; i < endIndex; i++) {
+        const startDist = distances[i];
+        
+        // Find the point approximately windowDistance meters ahead
+        for (let j = i + 1; j <= endIndex; j++) {
+            const dist = distances[j] - startDist;
+            
+            // Once we've covered the window distance, calculate gradient
+            if (dist >= windowDistance) {
+                const elevGain = elevations[j] - elevations[i];
+                const gradient = Math.abs((elevGain / dist) * 100);
+                maxGradient = Math.max(maxGradient, gradient);
+                break;
+            }
+            
+            // If we're at the end without reaching window distance, use what we have
+            if (j === endIndex && dist > 20) { // Only if we have at least 20m
+                const elevGain = elevations[j] - elevations[i];
+                const gradient = Math.abs((elevGain / dist) * 100);
+                maxGradient = Math.max(maxGradient, gradient);
+            }
         }
     }
     
-    return maxGradient;
+    // Cap at realistic maximum (even the steepest roads rarely exceed 30-35%)
+    return Math.min(maxGradient, 40);
 }
 
 /**
@@ -522,4 +538,164 @@ export function calculateClimbDifficulty(climb) {
  */
 export function formatGradient(gradient) {
     return `${gradient.toFixed(1)}%`;
+}
+
+/**
+ * Detect descents in a track based on sustained elevation loss
+ * @param {Array} distances - Array of distances in meters
+ * @param {Array} elevations - Array of elevations in meters
+ * @param {Object} options - Detection options
+ * @returns {Array} Array of descent objects
+ */
+export function detectDescents(distances, elevations, options = {}) {
+    const {
+        minLoss = 100,        // Minimum elevation loss in meters
+        minDistance = 500,    // Minimum distance in meters
+        minGradient = 3,      // Minimum average gradient in % (absolute value)
+        tolerance = 20        // Allow ascent within descent (meters)
+    } = options;
+    
+    const descents = [];
+    let descentStart = null;
+    let descentStartElevation = null;
+    let lowestElevation = null;
+    let lowestIndex = null;
+    
+    for (let i = 0; i < elevations.length; i++) {
+        const elevation = elevations[i];
+        
+        // Not currently in a descent
+        if (descentStart === null) {
+            // Start a potential descent if elevation is decreasing
+            if (i > 0 && elevation < elevations[i - 1]) {
+                descentStart = i;
+                descentStartElevation = elevations[i - 1];
+                lowestElevation = elevation;
+                lowestIndex = i;
+            }
+        } else {
+            // Currently in a descent
+            if (elevation < lowestElevation) {
+                lowestElevation = elevation;
+                lowestIndex = i;
+            }
+            
+            // Check if we've ascended too much from the lowest point
+            const ascentFromLow = elevation - lowestElevation;
+            
+            if (ascentFromLow > tolerance) {
+                // End the descent at the lowest point
+                const loss = descentStartElevation - lowestElevation;
+                const distance = distances[lowestIndex] - distances[descentStart];
+                const avgGradient = Math.abs((loss / distance) * 100);
+                
+                // Check if this descent meets our criteria
+                if (loss >= minLoss && distance >= minDistance && avgGradient >= minGradient) {
+                    descents.push({
+                        startIndex: descentStart,
+                        endIndex: lowestIndex,
+                        startDistance: distances[descentStart],
+                        endDistance: distances[lowestIndex],
+                        startElevation: descentStartElevation,
+                        endElevation: lowestElevation,
+                        loss,
+                        distance,
+                        avgGradient,
+                        maxGradient: calculateMaxGradient(distances, elevations, descentStart, lowestIndex)
+                    });
+                }
+                
+                // Reset for next descent
+                descentStart = null;
+                descentStartElevation = null;
+                lowestElevation = null;
+                lowestIndex = null;
+            }
+        }
+    }
+    
+    // Check if we ended while still in a descent
+    if (descentStart !== null) {
+        const loss = descentStartElevation - lowestElevation;
+        const distance = distances[lowestIndex] - distances[descentStart];
+        const avgGradient = Math.abs((loss / distance) * 100);
+        
+        if (loss >= minLoss && distance >= minDistance && avgGradient >= minGradient) {
+            descents.push({
+                startIndex: descentStart,
+                endIndex: lowestIndex,
+                startDistance: distances[descentStart],
+                endDistance: distances[lowestIndex],
+                startElevation: descentStartElevation,
+                endElevation: lowestElevation,
+                loss,
+                distance,
+                avgGradient,
+                maxGradient: calculateMaxGradient(distances, elevations, descentStart, lowestIndex)
+            });
+        }
+    }
+    
+    return descents;
+}
+
+/**
+ * Match similar descents between two tracks
+ * @param {Array} descents1 - Descents from track 1
+ * @param {Array} descents2 - Descents from track 2
+ * @param {Object} options - Matching options
+ * @returns {Array} Array of matched descent pairs
+ */
+export function matchDescents(descents1, descents2, options = {}) {
+    const {
+        lossTolerance = 0.25,      // 25% tolerance for loss difference
+        distanceTolerance = 0.25,  // 25% tolerance for distance difference
+        gradientTolerance = 2      // 2% tolerance for gradient difference
+    } = options;
+    
+    const matches = [];
+    const used2 = new Set();
+    
+    for (const descent1 of descents1) {
+        let bestMatch = null;
+        let bestScore = -1;
+        
+        for (let i = 0; i < descents2.length; i++) {
+            if (used2.has(i)) continue;
+            
+            const descent2 = descents2[i];
+            
+            // Calculate similarity scores (0-1, higher is better)
+            const lossDiff = Math.abs(descent1.loss - descent2.loss) / Math.max(descent1.loss, descent2.loss);
+            const distDiff = Math.abs(descent1.distance - descent2.distance) / Math.max(descent1.distance, descent2.distance);
+            const gradDiff = Math.abs(descent1.avgGradient - descent2.avgGradient);
+            
+            // Check if within tolerances
+            if (lossDiff <= lossTolerance && 
+                distDiff <= distanceTolerance && 
+                gradDiff <= gradientTolerance) {
+                
+                // Calculate overall similarity score (inverse of differences)
+                const score = (1 - lossDiff) * 0.4 + 
+                             (1 - distDiff) * 0.3 + 
+                             (1 - gradDiff / 10) * 0.3;
+                
+                if (score > bestScore) {
+                    bestScore = score;
+                    bestMatch = { descent: descent2, index: i };
+                }
+            }
+        }
+        
+        if (bestMatch) {
+            matches.push({
+                descent1,
+                descent2: bestMatch.descent,
+                similarityScore: bestScore
+            });
+            used2.add(bestMatch.index);
+        }
+    }
+    
+    return matches;
 }

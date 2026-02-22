@@ -11,6 +11,8 @@ import {
     formatElevation,
     detectClimbs,
     matchClimbs,
+    detectDescents,
+    matchDescents,
     calculateClimbDifficulty,
     formatGradient
 } from './gpxProcessor.js';
@@ -25,7 +27,16 @@ const state = {
     track1RawPoints: null,  // Store raw trackpoints for reprocessing
     track2RawPoints: null,
     smoothingWindow: 5,     // Default smoothing
-    gainThreshold: 3        // Default threshold in meters
+    gainThreshold: 3,       // Default threshold in meters
+    // Climb/descent detection parameters
+    minGain: 100,           // Minimum elevation change in meters
+    minDistance: 500,       // Minimum distance in meters
+    minGradient: 3,         // Minimum gradient in %
+    tolerance: 20,          // Tolerance for opposite changes in meters
+    // Similarity matching tolerances
+    gainTolerance: 0.25,    // 25% tolerance for gain/loss difference
+    distanceTolerance: 0.25, // 25% tolerance for distance difference
+    gradientTolerance: 2    // 2% tolerance for gradient difference
 };
 
 // DOM elements
@@ -36,10 +47,16 @@ const file2Name = document.getElementById('file2-name');
 const errorSection = document.getElementById('error-section');
 const errorMessage = document.getElementById('error-message');
 const statsSection = document.getElementById('stats-section');
-const smoothingSection = document.getElementById('smoothing-section');
 const smoothingSlider = document.getElementById('smoothing-slider');
 const smoothingValue = document.getElementById('smoothing-value');
 const thresholdInput = document.getElementById('threshold-input');
+const minGainInput = document.getElementById('min-gain-input');
+const minDistanceInput = document.getElementById('min-distance-input');
+const minGradientInput = document.getElementById('min-gradient-input');
+const toleranceInput = document.getElementById('tolerance-input');
+const gainToleranceInput = document.getElementById('gain-tolerance-input');
+const distanceToleranceInput = document.getElementById('distance-tolerance-input');
+const gradientToleranceInput = document.getElementById('gradient-tolerance-input');
 
 /**
  * Initialize the application
@@ -55,6 +72,27 @@ function init() {
     // Set up smoothing controls
     smoothingSlider.addEventListener('input', handleSmoothingChange);
     thresholdInput.addEventListener('change', handleThresholdChange);
+    
+    // Set up detection parameter controls
+    minGainInput.addEventListener('input', handleDetectionParamsChange);
+    minDistanceInput.addEventListener('input', handleDetectionParamsChange);
+    minGradientInput.addEventListener('input', handleDetectionParamsChange);
+    toleranceInput.addEventListener('input', handleDetectionParamsChange);
+    
+    // Set up similarity tolerance controls
+    gainToleranceInput.addEventListener('input', handleSimilarityParamsChange);
+    distanceToleranceInput.addEventListener('input', handleSimilarityParamsChange);
+    gradientToleranceInput.addEventListener('input', handleSimilarityParamsChange);
+    
+    // Set up help toggle
+    const helpToggle = document.getElementById('help-toggle');
+    const helpContent = document.getElementById('help-content');
+    helpToggle.addEventListener('click', () => {
+        helpContent.classList.toggle('hidden');
+        const icon = helpContent.classList.contains('hidden') ? '⚙️' : '✖️';
+        const text = helpContent.classList.contains('hidden') ? 'Settings & Help' : 'Close';
+        helpToggle.innerHTML = `<span class="help-icon">${icon}</span> ${text}`;
+    });
     
     // Update initial slider display
     updateSmoothingDisplay();
@@ -107,11 +145,6 @@ async function handleFileUpload(event, trackNumber) {
         // Clear any previous errors
         hideError();
         
-        // Show smoothing controls once files are loaded
-        if (state.track1 || state.track2) {
-            smoothingSection.classList.remove('hidden');
-        }
-        
         // If both tracks are loaded, compare them
         if (state.track1 && state.track2) {
             compareTracksAndVisualize();
@@ -152,6 +185,48 @@ function handleSmoothingChange() {
 function handleThresholdChange() {
     state.gainThreshold = parseFloat(thresholdInput.value);
     reprocessTracks();
+}
+
+/**
+ * Handle detection parameters change
+ */
+function handleDetectionParamsChange() {
+    const minGain = parseFloat(minGainInput.value);
+    const minDistance = parseFloat(minDistanceInput.value) * 1000; // Convert km to meters
+    const minGradient = parseFloat(minGradientInput.value);
+    const tolerance = parseFloat(toleranceInput.value);
+    
+    if (!isNaN(minGain) && !isNaN(minDistance) && !isNaN(minGradient) && !isNaN(tolerance)) {
+        state.minGain = minGain;
+        state.minDistance = minDistance;
+        state.minGradient = minGradient;
+        state.tolerance = tolerance;
+        
+        // Re-visualize with new detection parameters (no need to reprocess elevation data)
+        if (state.track1 && state.track2) {
+            compareTracksAndVisualize();
+        }
+    }
+}
+
+/**
+ * Handle similarity matching parameters change
+ */
+function handleSimilarityParamsChange() {
+    const gainTolerance = parseFloat(gainToleranceInput.value) / 100; // Convert % to decimal
+    const distanceTolerance = parseFloat(distanceToleranceInput.value) / 100; // Convert % to decimal
+    const gradientTolerance = parseFloat(gradientToleranceInput.value);
+    
+    if (!isNaN(gainTolerance) && !isNaN(distanceTolerance) && !isNaN(gradientTolerance)) {
+        state.gainTolerance = gainTolerance;
+        state.distanceTolerance = distanceTolerance;
+        state.gradientTolerance = gradientTolerance;
+        
+        // Re-visualize with new similarity parameters
+        if (state.track1 && state.track2) {
+            compareTracksAndVisualize();
+        }
+    }
 }
 
 /**
@@ -232,36 +307,63 @@ function compareTracksAndVisualize() {
         normalizedData.track1.label = state.track1FileName || 'Track 1';
         normalizedData.track2.label = state.track2FileName || 'Track 2';
         
-        // Detect climbs in both tracks
+        // Detect climbs in both tracks using state parameters
         const climbs1 = detectClimbs(state.track1.distances, state.track1.elevations, {
-            minGain: 100,
-            minDistance: 500,
-            minGradient: 3,
-            tolerance: 20
+            minGain: state.minGain,
+            minDistance: state.minDistance,
+            minGradient: state.minGradient,
+            tolerance: state.tolerance
         });
         
         const climbs2 = detectClimbs(state.track2.distances, state.track2.elevations, {
-            minGain: 100,
-            minDistance: 500,
-            minGradient: 3,
-            tolerance: 20
+            minGain: state.minGain,
+            minDistance: state.minDistance,
+            minGradient: state.minGradient,
+            tolerance: state.tolerance
         });
         
-        // Match similar climbs between tracks
-        const matchedClimbs = matchClimbs(climbs1, climbs2);
+        // Detect descents in both tracks using state parameters
+        const descents1 = detectDescents(state.track1.distances, state.track1.elevations, {
+            minLoss: state.minGain,  // Use same threshold for consistency
+            minDistance: state.minDistance,
+            minGradient: state.minGradient,
+            tolerance: state.tolerance
+        });
         
-        // Update chart with climb highlighting
-        updateChart(normalizedData, climbs1, climbs2);
+        const descents2 = detectDescents(state.track2.distances, state.track2.elevations, {
+            minLoss: state.minGain,  // Use same threshold for consistency
+            minDistance: state.minDistance,
+            minGradient: state.minGradient,
+            tolerance: state.tolerance
+        });
+        
+        // Match similar climbs and descents between tracks
+        const matchedClimbs = matchClimbs(climbs1, climbs2, {
+            gainTolerance: state.gainTolerance,
+            distanceTolerance: state.distanceTolerance,
+            gradientTolerance: state.gradientTolerance
+        });
+        const matchedDescents = matchDescents(descents1, descents2, {
+            lossTolerance: state.gainTolerance,  // Use same tolerance
+            distanceTolerance: state.distanceTolerance,
+            gradientTolerance: state.gradientTolerance
+        });
+        
+        // Update chart with climb and descent highlighting
+        updateChart(normalizedData, climbs1, climbs2, descents1, descents2);
         
         // Update statistics display
         updateStats(state.track1.stats, state.track2.stats);
         
-        // Update climbs display
+        // Update climbs and descents display
         updateClimbsDisplay(climbs1, climbs2, matchedClimbs);
+        updateDescentsDisplay(descents1, descents2, matchedDescents);
         
         console.log('Tracks compared and visualized successfully');
         console.log(`Detected ${climbs1.length} climbs in Track 1, ${climbs2.length} climbs in Track 2`);
+        console.log(`Detected ${descents1.length} descents in Track 1, ${descents2.length} descents in Track 2`);
         console.log(`Matched ${matchedClimbs.length} similar climb pairs`);
+        console.log(`Matched ${matchedDescents.length} similar descent pairs`);
         
     } catch (error) {
         console.error('Error comparing tracks:', error);
@@ -474,6 +576,183 @@ function createClimbsTable(climbs, trackClass) {
                     <th>Avg Grade</th>
                     <th>Max Grade</th>
                     <th>Difficulty</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Update the descents display section
+ * @param {Array} descents1 - Array of descent objects from track 1
+ * @param {Array} descents2 - Array of descent objects from track 2
+ * @param {Array} matchedDescents - Array of matched descent pairs
+ */
+function updateDescentsDisplay(descents1, descents2, matchedDescents) {
+    const descentsSection = document.getElementById('descents-section');
+    const descentsContent = document.getElementById('descents-content');
+    
+    // Hide section if no descents detected
+    if (descents1.length === 0 && descents2.length === 0) {
+        descentsSection.classList.add('hidden');
+        return;
+    }
+    
+    descentsSection.classList.remove('hidden');
+    descentsContent.innerHTML = '';
+    
+    // Display matched descents
+    if (matchedDescents.length > 0) {
+        const matchedSection = document.createElement('div');
+        matchedSection.className = 'descent-category';
+        matchedSection.innerHTML = `
+            <h3>
+                Similar Descents Between Tracks
+                <span class="descent-category-badge matched-badge">${matchedDescents.length} Matches</span>
+            </h3>
+            ${createMatchedDescentsTable(matchedDescents, state.track1FileName, state.track2FileName)}
+        `;
+        descentsContent.appendChild(matchedSection);
+    }
+    
+    // Display Track 1 and Track 2 descents side by side
+    if (descents1.length > 0 || descents2.length > 0) {
+        const sideBySideContainer = document.createElement('div');
+        sideBySideContainer.className = 'descents-side-by-side';
+        
+        // Display all descents from Track 1
+        if (descents1.length > 0) {
+            const track1Section = document.createElement('div');
+            track1Section.className = 'descent-category descent-category-half';
+            const track1Name = state.track1FileName || 'Track 1';
+            track1Section.innerHTML = `
+                <h3>
+                    ${track1Name}
+                    <span class="descent-category-badge">${descents1.length} Descents</span>
+                </h3>
+                ${createDescentsTable(descents1, 'track1')}
+            `;
+            sideBySideContainer.appendChild(track1Section);
+        }
+        
+        // Display all descents from Track 2
+        if (descents2.length > 0) {
+            const track2Section = document.createElement('div');
+            track2Section.className = 'descent-category descent-category-half';
+            const track2Name = state.track2FileName || 'Track 2';
+            track2Section.innerHTML = `
+                <h3>
+                    ${track2Name}
+                    <span class="descent-category-badge">${descents2.length} Descents</span>
+                </h3>
+                ${createDescentsTable(descents2, 'track2')}
+            `;
+            sideBySideContainer.appendChild(track2Section);
+        }
+        
+        descentsContent.appendChild(sideBySideContainer);
+    }
+}
+
+/**
+ * Create HTML table for matched descents
+ * @param {Array} matchedDescents - Array of matched descent pairs
+ * @param {string} track1Name - Name of track 1
+ * @param {string} track2Name - Name of track 2
+ * @returns {string} HTML string
+ */
+function createMatchedDescentsTable(matchedDescents, track1Name, track2Name) {
+    const t1Name = track1Name || 'Track 1';
+    const t2Name = track2Name || 'Track 2';
+    
+    const rows = matchedDescents.map((match, index) => {
+        const d1 = match.descent1;
+        const d2 = match.descent2;
+        const similarity = Math.round(match.similarityScore * 100);
+        
+        return `
+            <tr>
+                <td><span class="descent-number">${index + 1}</span></td>
+                <td>
+                    ${t1Name}: ${formatDistance(d1.startDistance)} - ${formatDistance(d1.endDistance)}<br>
+                    ${t2Name}: ${formatDistance(d2.startDistance)} - ${formatDistance(d2.endDistance)}
+                </td>
+                <td>
+                    ${t1Name}: ${formatElevation(d1.loss)}<br>
+                    ${t2Name}: ${formatElevation(d2.loss)}
+                </td>
+                <td>
+                    ${t1Name}: ${formatDistance(d1.distance)}<br>
+                    ${t2Name}: ${formatDistance(d2.distance)}
+                </td>
+                <td>
+                    ${t1Name}: ${formatGradient(d1.avgGradient)}<br>
+                    ${t2Name}: ${formatGradient(d2.avgGradient)}
+                </td>
+                <td>
+                    <div class="similarity-indicator">
+                        ${similarity}%
+                        <div class="similarity-bar">
+                            <div class="similarity-fill" style="width: ${similarity}%"></div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+        `;
+    }).join('');
+    
+    return `
+        <table class="descent-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Location</th>
+                    <th>Loss</th>
+                    <th>Distance</th>
+                    <th>Avg Grade</th>
+                    <th>Similarity</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${rows}
+            </tbody>
+        </table>
+    `;
+}
+
+/**
+ * Create HTML table for descents
+ * @param {Array} descents - Array of descent objects
+ * @param {string} trackClass - CSS class for track identification
+ * @returns {string} HTML string
+ */
+function createDescentsTable(descents, trackClass) {
+    const rows = descents.map((descent, index) => {
+        return `
+            <tr>
+                <td><span class="descent-number ${trackClass}-descent">${index + 1}</span></td>
+                <td>${formatDistance(descent.startDistance)} - ${formatDistance(descent.endDistance)}</td>
+                <td>${formatElevation(descent.loss)}</td>
+                <td>${formatDistance(descent.distance)}</td>
+                <td>${formatGradient(descent.avgGradient)}</td>
+                <td>${formatGradient(descent.maxGradient)}</td>
+            </tr>
+        `;
+    }).join('');
+    
+    return `
+        <table class="descent-table">
+            <thead>
+                <tr>
+                    <th>#</th>
+                    <th>Location</th>
+                    <th>Loss</th>
+                    <th>Distance</th>
+                    <th>Avg Grade</th>
+                    <th>Max Grade</th>
                 </tr>
             </thead>
             <tbody>

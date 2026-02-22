@@ -6,49 +6,88 @@
 let chart1Instance = null;
 let chart2Instance = null;
 
-// Climb highlight plugin definition
+// Climb and descent highlight plugin definition
 const climbHighlightPlugin = {
     id: 'climbHighlight',
     beforeDatasetsDraw: (chart) => {
-        if (!chart._climbRegions || chart._climbRegions.length === 0) {
+        const hasClimbs = chart._climbRegions && chart._climbRegions.length > 0;
+        const hasDescents = chart._descentRegions && chart._descentRegions.length > 0;
+        
+        if (!hasClimbs && !hasDescents) {
             return;
         }
         
         const ctx = chart.ctx;
         const chartArea = chart.chartArea;
         const xScale = chart.scales.x;
-        const color = chart._climbColor || 'rgba(255, 193, 7, 0.2)';
         
         ctx.save();
         
-        chart._climbRegions.forEach((climb, index) => {
-            const startX = xScale.getPixelForValue(climb.startDistance / 1000);
-            const endX = xScale.getPixelForValue(climb.endDistance / 1000);
-            
-            // Draw background rectangle
-            ctx.fillStyle = color;
-            ctx.fillRect(
-                startX,
-                chartArea.top,
-                endX - startX,
-                chartArea.bottom - chartArea.top
-            );
-            
-            // Draw climb number badge at top
-            const centerX = (startX + endX) / 2;
-            const badgeY = chartArea.top + 15;
-            
-            ctx.fillStyle = 'rgba(52, 73, 94, 0.9)';
-            ctx.beginPath();
-            ctx.arc(centerX, badgeY, 12, 0, Math.PI * 2);
-            ctx.fill();
-            
-            ctx.fillStyle = 'white';
-            ctx.font = 'bold 11px sans-serif';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText((index + 1).toString(), centerX, badgeY);
-        });
+        // Draw climbs (golden/amber color)
+        if (hasClimbs) {
+            const climbColor = 'rgba(255, 193, 7, 0.2)';
+            chart._climbRegions.forEach((climb, index) => {
+                const startX = xScale.getPixelForValue(climb.startDistance / 1000);
+                const endX = xScale.getPixelForValue(climb.endDistance / 1000);
+                
+                // Draw background rectangle
+                ctx.fillStyle = climbColor;
+                ctx.fillRect(
+                    startX,
+                    chartArea.top,
+                    endX - startX,
+                    chartArea.bottom - chartArea.top
+                );
+                
+                // Draw climb number badge at top
+                const centerX = (startX + endX) / 2;
+                const badgeY = chartArea.top + 15;
+                
+                ctx.fillStyle = 'rgba(230, 126, 34, 0.9)';  // Orange badge for climbs
+                ctx.beginPath();
+                ctx.arc(centerX, badgeY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((index + 1).toString(), centerX, badgeY);
+            });
+        }
+        
+        // Draw descents (blue/cyan color)
+        if (hasDescents) {
+            const descentColor = 'rgba(52, 152, 219, 0.2)';
+            chart._descentRegions.forEach((descent, index) => {
+                const startX = xScale.getPixelForValue(descent.startDistance / 1000);
+                const endX = xScale.getPixelForValue(descent.endDistance / 1000);
+                
+                // Draw background rectangle
+                ctx.fillStyle = descentColor;
+                ctx.fillRect(
+                    startX,
+                    chartArea.top,
+                    endX - startX,
+                    chartArea.bottom - chartArea.top
+                );
+                
+                // Draw descent number badge at bottom (to distinguish from climbs)
+                const centerX = (startX + endX) / 2;
+                const badgeY = chartArea.bottom - 15;
+                
+                ctx.fillStyle = 'rgba(41, 128, 185, 0.9)';  // Blue badge for descents
+                ctx.beginPath();
+                ctx.arc(centerX, badgeY, 12, 0, Math.PI * 2);
+                ctx.fill();
+                
+                ctx.fillStyle = 'white';
+                ctx.font = 'bold 11px sans-serif';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillText((index + 1).toString(), centerX, badgeY);
+            });
+        }
         
         ctx.restore();
     }
@@ -222,8 +261,10 @@ export function initChart(canvasId1, canvasId2) {
  * @param {Object} normalizedData - Data from normalizeTracks()
  * @param {Array} climbs1 - Optional array of climbs for track 1
  * @param {Array} climbs2 - Optional array of climbs for track 2
+ * @param {Array} descents1 - Optional array of descents for track 1
+ * @param {Array} descents2 - Optional array of descents for track 2
  */
-export function updateChart(normalizedData, climbs1 = [], climbs2 = []) {
+export function updateChart(normalizedData, climbs1 = [], climbs2 = [], descents1 = [], descents2 = []) {
     if (!chart1Instance || !chart2Instance) {
         throw new Error('Charts not initialized. Call initChart() first.');
     }
@@ -235,9 +276,11 @@ export function updateChart(normalizedData, climbs1 = [], climbs2 = []) {
     chart1Instance.options.scales.x.max = maxDistanceKm;
     chart2Instance.options.scales.x.max = maxDistanceKm;
     
-    // Store climbs for highlighting
+    // Store climbs and descents for highlighting
     chart1Instance._climbRegions = climbs1;
+    chart1Instance._descentRegions = descents1;
     chart2Instance._climbRegions = climbs2;
+    chart2Instance._descentRegions = descents2;
     
     // Update Chart 1 (Track 1)
     chart1Instance.data.datasets = [{
