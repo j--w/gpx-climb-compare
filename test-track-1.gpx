@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<gpx version="1.1" creator="GPX Test" xmlns="http://www.topografix.com/GPX/1/1">
+  <trk>
+    <name>Test Track 1 - Steady Climb</name>
+    <trkseg>
+      <trkpt lat="37.7749" lon="-122.4194">
+        <ele>100</ele>
+      </trkpt>
+      <trkpt lat="37.7750" lon="-122.4190">
+        <ele>120</ele>
+      </trkpt>
+      <trkpt lat="37.7751" lon="-122.4186">
+        <ele>140</ele>
+      </trkpt>
+      <trkpt lat="37.7752" lon="-122.4182">
+        <ele>160</ele>
+      </trkpt>
+      <trkpt lat="37.7753" lon="-122.4178">
+        <ele>180</ele>
+      </trkpt>
+      <trkpt lat="37.7754" lon="-122.4174">
+        <ele>200</ele>
+      </trkpt>
+      <trkpt lat="37.7755" lon="-122.4170">
+        <ele>220</ele>
+      </trkpt>
+      <trkpt lat="37.7756" lon="-122.4166">
+        <ele>240</ele>
+      </trkpt>
+      <trkpt lat="37.7757" lon="-122.4162">
+        <ele>260</ele>
+      </trkpt>
+      <trkpt lat="37.7758" lon="-122.4158">
+        <ele>280</ele>
+      </trkpt>
+      <trkpt lat="37.7759" lon="-122.4154">
+        <ele>300</ele>
+      </trkpt>
+      <trkpt lat="37.7760" lon="-122.4150">
+        <ele>320</ele>
+      </trkpt>
+      <trkpt lat="37.7761" lon="-122.4146">
+        <ele>340</ele>
+      </trkpt>
+      <trkpt lat="37.7762" lon="-122.4142">
+        <ele>360</ele>
+      </trkpt>
+      <trkpt lat="37.7763" lon="-122.4138">
+        <ele>380</ele>
+      </trkpt>
+      <trkpt lat="37.7764" lon="-122.4134">
+        <ele>400</ele>
+      </trkpt>
+    </trkseg>
+  </trk>
+</gpx>

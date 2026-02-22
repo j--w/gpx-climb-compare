@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GPX Elevation Profile Comparison</title>
+    <link rel="stylesheet" href="styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>GPX Elevation Profile Comparison</h1>
+            <p>Compare elevation profiles of two trail run courses</p>
+        </header>
+
+        <main>
+            <section class="file-input-section">
+                <div class="file-input-group">
+                    <label for="gpx1">
+                        <span class="label-text">Track 1:</span>
+                        <input type="file" id="gpx1" accept=".gpx" />
+                        <span class="file-name" id="file1-name">No file chosen</span>
+                    </label>
+                </div>
+
+                <div class="file-input-group">
+                    <label for="gpx2">
+                        <span class="label-text">Track 2:</span>
+                        <input type="file" id="gpx2" accept=".gpx" />
+                        <span class="file-name" id="file2-name">No file chosen</span>
+                    </label>
+                </div>
+            </section>
+
+            <section id="error-section" class="error-section hidden">
+                <p id="error-message"></p>
+            </section>
+
+            <section id="stats-section" class="stats-section hidden">
+                <div class="stat-card" id="stats1">
+                    <h3>Track 1</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Distance:</span>
+                        <span class="stat-value" id="distance1">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation Gain:</span>
+                        <span class="stat-value" id="gain1">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Elevation:</span>
+                        <span class="stat-value" id="max1">-</span>
+                    </div>
+                </div>
+
+                <div class="stat-card" id="stats2">
+                    <h3>Track 2</h3>
+                    <div class="stat-item">
+                        <span class="stat-label">Distance:</span>
+                        <span class="stat-value" id="distance2">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Elevation Gain:</span>
+                        <span class="stat-value" id="gain2">-</span>
+                    </div>
+                    <div class="stat-item">
+                        <span class="stat-label">Max Elevation:</span>
+                        <span class="stat-value" id="max2">-</span>
+                    </div>
+                </div>
+            </section>
+
+            <section class="chart-section">
+                <div class="chart-container">
+                    <canvas id="elevationChart1"></canvas>
+                </div>
+                <div class="chart-container chart-container-bottom">
+                    <canvas id="elevationChart2"></canvas>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
