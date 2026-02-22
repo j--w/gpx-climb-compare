@@ -4,334 +4,49 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>GPX Elevation Profile Comparison</title>
-    <link rel="stylesheet" href="styles.css">
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background-color: #f5f7fa;
+            color: #2c3e50;
+            line-height: 1.6;
+        }
+
+        .page-header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 2rem;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+
+        .page-header h1 {
+            font-size: 2rem;
+            font-weight: 700;
+            margin-bottom: 0.5rem;
+        }
+
+        .page-header p {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>GPX Elevation Profile Comparison</h1>
-            <p>Compare elevation profiles of two trail run courses</p>
-        </header>
+    <header class="page-header">
+        <h1>GPX Elevation Profile Comparison</h1>
+        <p>Compare elevation profiles of two trail run courses</p>
+    </header>
 
-        <main>
-            <section id="help-section" class="help-section">
-                <button id="help-toggle" class="help-toggle">
-                    <span class="help-icon">⚙️</span> Settings & Help
-                </button>
-                <div id="help-content" class="help-content hidden">
-                    <div class="help-sections">
-                        <!-- Smoothing Settings -->
-                        <div class="help-section-group">
-                            <h3><span class="section-icon">🎚️</span> Smoothing & Elevation Settings</h3>
-                            <p class="section-description">
-                                GPS elevation data contains noise. Adjust these to match your data quality.
-                                Higher values = more smoothing = lower elevation gain.
-                            </p>
-                            <div class="smoothing-controls">
-                                <div class="smoothing-slider-container">
-                                    <label for="smoothing-slider">
-                                        <span class="smoothing-label">Smoothing Level:</span>
-                                        <span class="smoothing-value" id="smoothing-value">5 points</span>
-                                    </label>
-                                    <input type="range" id="smoothing-slider" min="0" max="15" value="5" step="1" />
-                                    <div class="smoothing-markers">
-                                        <span>None (Raw)</span>
-                                        <span>Light</span>
-                                        <span>Moderate</span>
-                                        <span>Heavy</span>
-                                    </div>
-                                </div>
-                                <div class="smoothing-threshold">
-                                    <label for="threshold-input">
-                                        <span>Minimum Gain Threshold:</span>
-                                        <input type="number" id="threshold-input" min="0" max="10" value="3" step="0.5" />
-                                        <span>meters</span>
-                                    </label>
-                                    <p class="threshold-description">Ignore elevation changes smaller than this value</p>
-                                </div>
-                            </div>
-                        </div>
+    <app-shell></app-shell>
 
-                        <!-- Detection Settings -->
-                        <div class="help-section-group">
-                            <h3><span class="section-icon">🏔️</span> Climb & Descent Detection Settings</h3>
-                            <p class="section-description">
-                                Adjust thresholds for what qualifies as a notable climb or descent.
-                            </p>
-                            <div class="detection-controls">
-                                <div class="control-group">
-                                    <label for="min-gain-input">
-                                        <span class="control-label">Minimum Elevation Change:</span>
-                                        <input type="number" id="min-gain-input" min="10" max="500" value="100" step="10" />
-                                        <span>meters</span>
-                                    </label>
-                                    <p class="control-description">Minimum gain/loss to qualify as a climb/descent</p>
-                                </div>
-                                <div class="control-group">
-                                    <label for="min-distance-input">
-                                        <span class="control-label">Minimum Distance:</span>
-                                        <input type="number" id="min-distance-input" min="0.1" max="5" value="0.5" step="0.1" />
-                                        <span>km</span>
-                                    </label>
-                                    <p class="control-description">Minimum length to qualify as a climb/descent</p>
-                                </div>
-                                <div class="control-group">
-                                    <label for="min-gradient-input">
-                                        <span class="control-label">Minimum Gradient:</span>
-                                        <input type="number" id="min-gradient-input" min="1" max="15" value="3" step="0.5" />
-                                        <span>%</span>
-                                    </label>
-                                    <p class="control-description">Minimum average steepness to qualify</p>
-                                </div>
-                                <div class="control-group">
-                                    <label for="tolerance-input">
-                                        <span class="control-label">Tolerance:</span>
-                                        <input type="number" id="tolerance-input" min="5" max="100" value="20" step="5" />
-                                        <span>meters</span>
-                                    </label>
-                                    <p class="control-description">Allow brief opposite elevation changes within a climb/descent</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Similarity Matching Settings -->
-                        <div class="help-section-group">
-                            <h3><span class="section-icon">🔗</span> Similarity Matching Tolerances</h3>
-                            <p class="section-description">
-                                Controls how similar two climbs/descents must be to be considered a match. Lower values = stricter matching.
-                            </p>
-                            <div class="detection-controls">
-                                <div class="control-group">
-                                    <label for="gain-tolerance-input">
-                                        <span class="control-label">Elevation Gain/Loss Tolerance:</span>
-                                        <input type="number" id="gain-tolerance-input" min="5" max="50" value="25" step="5" />
-                                        <span>%</span>
-                                    </label>
-                                    <p class="control-description">Maximum % difference in elevation change to match</p>
-                                </div>
-                                <div class="control-group">
-                                    <label for="distance-tolerance-input">
-                                        <span class="control-label">Distance Tolerance:</span>
-                                        <input type="number" id="distance-tolerance-input" min="5" max="50" value="25" step="5" />
-                                        <span>%</span>
-                                    </label>
-                                    <p class="control-description">Maximum % difference in distance to match</p>
-                                </div>
-                                <div class="control-group">
-                                    <label for="gradient-tolerance-input">
-                                        <span class="control-label">Gradient Tolerance:</span>
-                                        <input type="number" id="gradient-tolerance-input" min="1" max="5" value="2" step="0.5" />
-                                        <span>%</span>
-                                    </label>
-                                    <p class="control-description">Maximum difference in gradient percentage points to match</p>
-                                </div>
-                            </div>
-                        </div>
-
-                        <!-- Definitions/Help -->
-                        <div class="help-section-group">
-                            <h3><span class="section-icon">📖</span> How Metrics Are Calculated</h3>
-                            <div class="help-grid">
-                                <div class="help-item">
-                                    <h4>Average Gradient <span class="tooltip-trigger" data-tooltip="The average steepness over the entire climb/descent">ⓘ</span></h4>
-                                    <p><strong>Formula:</strong> (Elevation Change ÷ Distance) × 100</p>
-                                    <p>Example: 200m gain over 2km = (200 ÷ 2000) × 100 = 10% gradient</p>
-                                </div>
-                                <div class="help-item">
-                                    <h4>Max Gradient <span class="tooltip-trigger" data-tooltip="The steepest sustained section within the climb">ⓘ</span></h4>
-                                    <p><strong>Calculated over:</strong> 100-meter rolling windows</p>
-                                    <p>Finds the steepest 100m section and caps at 40% (even the world's steepest roads rarely exceed 35-37%)</p>
-                                </div>
-                                <div class="help-item">
-                                    <h4>Difficulty Score <span class="tooltip-trigger" data-tooltip="Combines elevation gain and gradient to rate overall difficulty">ⓘ</span></h4>
-                                    <p><strong>Formula:</strong> (Gain^1.3 × Avg Gradient) ÷ 100</p>
-                                    <p>Scaled 0-100, where longer and steeper climbs score higher. Based on the Fiets climbing formula.</p>
-                                    <ul>
-                                        <li><strong>Easy:</strong> 0-30</li>
-                                        <li><strong>Moderate:</strong> 30-60</li>
-                                        <li><strong>Hard:</strong> 60+</li>
-                                    </ul>
-                                </div>
-                                <div class="help-item">
-                                    <h4>Similarity Score <span class="tooltip-trigger" data-tooltip="How closely two climbs match each other">ⓘ</span></h4>
-                                    <p><strong>Weighted by:</strong></p>
-                                    <ul>
-                                        <li>Elevation gain difference (40%)</li>
-                                        <li>Distance difference (30%)</li>
-                                        <li>Gradient difference (30%)</li>
-                                    </ul>
-                                    <p><strong>Matching criteria:</strong> Two climbs only match if they're within the tolerance thresholds you set above (default: 25% for gain/distance, 2% for gradient). Tighter tolerances = fewer, more precise matches.</p>
-                                </div>
-                                <div class="help-item">
-                                    <h4>Smoothing <span class="tooltip-trigger" data-tooltip="Reduces GPS noise in elevation data">ⓘ</span></h4>
-                                    <p><strong>Method:</strong> Moving average filter</p>
-                                    <p>Averages elevation values across nearby points to reduce GPS noise (±2-5m is common). Higher values = smoother profiles but may hide real variations.</p>
-                                </div>
-                                <div class="help-item">
-                                    <h4>Gain Threshold <span class="tooltip-trigger" data-tooltip="Ignores tiny elevation changes">ⓘ</span></h4>
-                                    <p><strong>Purpose:</strong> Prevent noise accumulation</p>
-                                    <p>Ignores elevation changes below this value (default 3m). Prevents GPS noise from inflating total elevation gain. Strava uses ~4m threshold.</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </section>
-
-            <section class="file-input-section">
-                <div class="file-input-group">
-                    <label for="gpx1">
-                        <span class="label-text">Track 1:</span>
-                        <input type="file" id="gpx1" accept=".gpx" />
-                        <span class="file-name" id="file1-name">No file chosen</span>
-                    </label>
-                </div>
-
-                <div class="file-input-group">
-                    <label for="gpx2">
-                        <span class="label-text">Track 2:</span>
-                        <input type="file" id="gpx2" accept=".gpx" />
-                        <span class="file-name" id="file2-name">No file chosen</span>
-                    </label>
-                </div>
-            </section>
-
-            <section id="smoothing-section" class="smoothing-section hidden">
-                <h3>Elevation Smoothing</h3>
-                <p class="smoothing-description">
-                    Adjust smoothing to reduce GPS noise and match Strava-style elevation calculations.
-                    Higher values = more smoothing = lower elevation gain.
-                </p>
-                <div class="smoothing-controls">
-                    <div class="smoothing-slider-container">
-                        <label for="smoothing-slider">
-                            <span class="smoothing-label">Smoothing Level:</span>
-                            <span class="smoothing-value" id="smoothing-value">5 points</span>
-                        </label>
-                        <input type="range" id="smoothing-slider" min="0" max="15" value="5" step="1" />
-                        <div class="smoothing-markers">
-                            <span>None (Raw)</span>
-                            <span>Light</span>
-                            <span>Moderate</span>
-                            <span>Heavy</span>
-                        </div>
-                    </div>
-                    <div class="smoothing-threshold">
-                        <label for="threshold-input">
-                            <span>Minimum Gain Threshold:</span>
-                            <input type="number" id="threshold-input" min="0" max="10" value="3" step="0.5" />
-                            <span>meters</span>
-                        </label>
-                        <p class="threshold-description">Ignore elevation changes smaller than this value</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="detection-section" class="detection-section hidden">
-                <h2>Climb & Descent Detection Settings</h2>
-                <p class="section-description">
-                    Adjust thresholds for what qualifies as a notable climb or descent.
-                </p>
-                <div class="detection-controls">
-                    <div class="control-group">
-                        <label for="min-gain-input">
-                            <span class="control-label">Minimum Elevation Change:</span>
-                            <input type="number" id="min-gain-input" min="10" max="500" value="100" step="10" />
-                            <span>meters</span>
-                        </label>
-                        <p class="control-description">Minimum gain/loss to qualify as a climb/descent</p>
-                    </div>
-                    <div class="control-group">
-                        <label for="min-distance-input">
-                            <span class="control-label">Minimum Distance:</span>
-                            <input type="number" id="min-distance-input" min="0.1" max="5" value="0.5" step="0.1" />
-                            <span>km</span>
-                        </label>
-                        <p class="control-description">Minimum length to qualify as a climb/descent</p>
-                    </div>
-                    <div class="control-group">
-                        <label for="min-gradient-input">
-                            <span class="control-label">Minimum Gradient:</span>
-                            <input type="number" id="min-gradient-input" min="1" max="15" value="3" step="0.5" />
-                            <span>%</span>
-                        </label>
-                        <p class="control-description">Minimum average steepness to qualify</p>
-                    </div>
-                    <div class="control-group">
-                        <label for="tolerance-input">
-                            <span class="control-label">Tolerance:</span>
-                            <input type="number" id="tolerance-input" min="5" max="100" value="20" step="5" />
-                            <span>meters</span>
-                        </label>
-                        <p class="control-description">Allow brief opposite elevation changes within a climb/descent</p>
-                    </div>
-                </div>
-            </section>
-
-            <section id="error-section" class="error-section hidden">
-                <p id="error-message"></p>
-            </section>
-
-            <section id="stats-section" class="stats-section hidden">
-                <div class="stat-card" id="stats1">
-                    <h3 id="track1-name">Track 1</h3>
-                    <div class="stat-item">
-                        <span class="stat-label">Distance:</span>
-                        <span class="stat-value" id="distance1">-</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Elevation Gain:</span>
-                        <span class="stat-value" id="gain1">-</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Max Elevation:</span>
-                        <span class="stat-value" id="max1">-</span>
-                    </div>
-                </div>
-
-                <div class="stat-card" id="stats2">
-                    <h3 id="track2-name">Track 2</h3>
-                    <div class="stat-item">
-                        <span class="stat-label">Distance:</span>
-                        <span class="stat-value" id="distance2">-</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Elevation Gain:</span>
-                        <span class="stat-value" id="gain2">-</span>
-                    </div>
-                    <div class="stat-item">
-                        <span class="stat-label">Max Elevation:</span>
-                        <span class="stat-value" id="max2">-</span>
-                    </div>
-                </div>
-            </section>
-
-            <section id="climbs-section" class="climbs-section hidden">
-                <h2>Detected Climbs</h2>
-                <div id="climbs-content">
-                    <!-- Climb tables will be inserted here -->
-                </div>
-            </section>
-
-            <section id="descents-section" class="descents-section hidden">
-                <h2>Detected Descents</h2>
-                <div id="descents-content">
-                    <!-- Descent tables will be inserted here -->
-                </div>
-            </section>
-
-            <section class="chart-section">
-                <div class="chart-container">
-                    <canvas id="elevationChart1"></canvas>
-                </div>
-                <div class="chart-container chart-container-bottom">
-                    <canvas id="elevationChart2"></canvas>
-                </div>
-            </section>
-        </main>
-    </div>
-
-    <script type="module" src="app.js"></script>
+    <script type="module" src="./components/app-shell.js"></script>
 </body>
 </html>

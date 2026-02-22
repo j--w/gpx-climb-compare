@@ -151,13 +151,14 @@ function getCommonYAxisConfig(title) {
 
 /**
  * Initialize both charts
- * @param {string} canvasId1 - ID of first canvas element
- * @param {string} canvasId2 - ID of second canvas element
+ * @param {string|HTMLCanvasElement} canvasId1 - ID or canvas element for first chart
+ * @param {string|HTMLCanvasElement} canvasId2 - ID or canvas element for second chart
  * @returns {Object} Both chart instances
  */
 export function initChart(canvasId1, canvasId2) {
-    const canvas1 = document.getElementById(canvasId1);
-    const canvas2 = document.getElementById(canvasId2);
+    // Support both element IDs and direct element references
+    const canvas1 = typeof canvasId1 === 'string' ? document.getElementById(canvasId1) : canvasId1;
+    const canvas2 = typeof canvasId2 === 'string' ? document.getElementById(canvasId2) : canvasId2;
     
     if (!canvas1 || !canvas2) {
         throw new Error('Canvas elements not found');
