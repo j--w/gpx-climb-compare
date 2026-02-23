@@ -7,91 +7,171 @@ A client-side web application for comparing elevation profiles of two GPX tracks
 - 📊 **Dual-chart comparison** - View tracks separately with common baseline and distance scale
 - 📏 **Relative elevation** - Both tracks start at 0m for easy comparison regardless of absolute elevation
 - 🏔️ **Automatic climb detection** - Identifies climbs >100m gain with >3% gradient
-- 🔍 **Climb matching** - Finds similar climbs between tracks for training comparison
-- 📈 **Climb statistics** - View gain, distance, gradient, and difficulty for each climb
-- 🎨 **Visual highlighting** - Climbs are shaded on charts with numbered badges
-- 📊 **Track statistics** - View distance, elevation gain, and max elevation for each track
+- ⛰️ **Automatic descent detection** - Identifies significant descents with matching
+- 🔍 **Similarity matching** - Finds similar climbs/descents between tracks for training comparison
+- 📈 **Detailed statistics** - View gain, distance, gradient, and difficulty for each segment
+- 🎨 **Visual highlighting** - Climbs and descents are shaded on charts with numbered badges
+- ⚙️ **Configurable settings** - Adjust smoothing, detection thresholds, and matching tolerances
 - 🎯 **Interactive charts** - Hover to see exact elevation at any point
 - 🔒 **Privacy-focused** - All processing happens in your browser, no data uploaded
+- ⚡ **Modern stack** - Built with Lit web components and buildless dev workflow
 
-## Quick Start
+## Tech Stack
 
-### Option 1: Open Directly (Limited)
+- **[Lit](https://lit.dev/)** - Fast, lightweight web components
+- **[Chart.js](https://www.chartjs.org/)** - Interactive elevation charts
+- **[@web/dev-server](https://modern-web.dev/docs/dev-server/overview/)** - Modern development server
+- **[@web/test-runner](https://modern-web.dev/docs/test-runner/overview/)** - Fast test runner
+- **[Rollup](https://rollupjs.org/)** - Production bundling
 
-Simply open `index.html` in your browser. 
+## Development
 
-**Note:** ES6 modules may not work with `file://` protocol in some browsers.
+### Prerequisites
 
-### Option 2: Local Server (Recommended)
+- Node.js 18+
+- pnpm (or npm)
 
-Run a local HTTP server to avoid CORS issues:
+### Installation
 
-**Python 3:**
 ```bash
-python3 -m http.server 8000
+pnpm install
 ```
 
-**Node.js (if you have http-server installed):**
+This will install all dependencies and automatically download the Chromium browser for testing.
+
+### Development Server
+
 ```bash
-npx http-server -p 8000
+pnpm start
 ```
 
-**PHP:**
+Runs the dev server at http://localhost:8000 with:
+- ES module resolution
+- Hot reloading
+- No build step (buildless development)
+
+### Build for Production
+
 ```bash
-php -S localhost:8000
+pnpm build
 ```
 
-Then open: `http://localhost:8000`
+Creates an optimized production build in `dist/` with:
+- Bundled and minified JavaScript
+- Inlined dependencies
+- Source maps
+
+### Preview Production Build
+
+```bash
+pnpm preview
+```
+
+### Testing
+
+```bash
+# Run tests once
+pnpm test
+
+# Run tests in watch mode
+pnpm test:watch
+```
 
 ## Usage
 
-1. Click on "Track 1" area and select your first GPX file
-2. Click on "Track 2" area and select your second GPX file
-3. The elevation profiles will automatically display in two stacked charts with:
-   - Relative elevation from each track's starting point
-   - Common distance scale for easy comparison
-   - Shaded regions highlighting detected climbs
-4. View track statistics below the file inputs
-5. Scroll down to see detailed climb analysis:
-   - **Similar Climbs**: Matched climbs between both tracks with similarity scores
-   - **Track 1 Climbs**: All detected climbs with difficulty ratings
-   - **Track 2 Climbs**: All detected climbs with difficulty ratings
-6. Hover over the chart to see exact elevations at any distance
+## Usage
 
-### Climb Detection Criteria
+1. Load two GPX files using the file inputs
+2. View automatic elevation comparison with highlighted climbs/descents
+3. Adjust settings in the drawer to tune detection and matching
+4. Review detected climbs/descents and matched segments
 
-Climbs are automatically detected based on:
-- Minimum elevation gain: 100m
-- Minimum distance: 0.5km
-- Minimum average gradient: 3%
-- Allows brief descents within a climb (20m tolerance)
+### Detection Settings
 
-Difficulty is calculated based on a combination of elevation gain and gradient.
+All thresholds are configurable in the Settings drawer:
+
+**Smoothing:**
+- Smoothing level: 0-15 points (reduce GPS noise)
+- Gain threshold: Ignore elevation changes smaller than this
+
+**Detection:**
+- Minimum elevation change: 100m (default)
+- Minimum distance: 0.5km (default)
+- Minimum gradient: 3% (default)
+- Tolerance: Allow brief opposite changes within a segment
+
+**Similarity Matching:**
+- Gain tolerance: 25% (default)
+- Distance tolerance: 25% (default)
+- Gradient tolerance: 2% (default)
 
 ## Architecture
 
-The project uses a clean separation of concerns:
+**Component-Based Structure:**
 
-- **`gpxProcessor.js`** - Data layer (library-agnostic)
+```
+components/
+├── app-shell.js       # Main container, state management
+├── settings-drawer.js # Collapsible settings panel
+├── file-uploader.js   # File input handling
+├── stats-display.js   # Track statistics cards
+├── chart-display.js   # Chart.js wrapper
+├── climbs-display.js  # Climb tables and matches
+└── descents-display.js # Descent tables and matches
+```
+
+**Data Processing:**
+
+- **`gpxProcessor.js`** - Core processing (library-agnostic)
   - GPX parsing and validation
-  - Distance calculations using Haversine formula
+  - Haversine distance calculations
   - Track normalization via linear interpolation
-  - Relative elevation calculation (common baseline)
-  - Climb detection algorithm
-  - Climb matching and similarity scoring
-  - Statistics computation
+  - Climb/descent detection algorithms
+  - Similarity matching and scoring
   
-- **`chartManager.js`** - Visualization layer (Chart.js)
-  - Dual-chart initialization and configuration
-  - Data rendering with climb highlighting
-  - Visual annotations (numbered climb badges)
-  - Can be swapped for D3.js or other libraries
-  
-- **`app.js`** - Application coordination
-  - File upload handling
-  - Climb detection and matching orchestration
-  - UI updates (stats, climb tables)
-  - Error handling
+- **`chartManager.js`** - Visualization (Chart.js)
+  - Dual-chart initialization
+  - Climb/descent highlighting
+  - Interactive tooltips
+
+**Design Principles:**
+
+- **Buildless development** - ES modules work directly in browser during dev
+- **Event-driven** - Components communicate via custom events
+- **State hoisting** - All state managed in app-shell component
+- **Shadow DOM** - Conditionally disabled for Chart.js compatibility
+- **Separation of concerns** - Data layer independent of UI framework
+
+## Deployment
+
+The production build bundles all dependencies into optimized files in `dist/`:
+
+```bash
+pnpm build
+```
+
+Then deploy the `dist/` folder to any static hosting service:
+
+- **GitHub Pages**: Push `dist/` to `gh-pages` branch
+- **Netlify**: Drag and drop `dist/` folder or connect to repo
+- **Vercel**: Deploy with `vercel --prod`
+- **Any static host**: Upload contents of `dist/`
+
+The app is fully client-side with no backend requirements.
+
+## Project Structure
+
+```
+├── components/           # Lit web components
+├── test/                # Test files
+├── gpxProcessor.js      # GPX parsing and processing
+├── chartManager.js      # Chart.js visualization
+├── index.html           # Entry point
+├── package.json
+├── rollup.config.js     # Production build config
+├── web-dev-server.config.mjs
+└── web-test-runner.config.mjs
+```
 
 ## Future Enhancements
 

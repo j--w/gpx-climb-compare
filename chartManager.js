@@ -3,6 +3,11 @@
  * Handles two separate stacked charts with common x-axis
  */
 
+import { Chart, registerables } from 'chart.js';
+
+// Register all Chart.js components
+Chart.register(...registerables);
+
 let chart1Instance = null;
 let chart2Instance = null;
 

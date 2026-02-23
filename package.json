@@ -1,0 +1,39 @@
+{
+  "name": "gpx-elev-compare",
+  "version": "1.0.0",
+  "description": "Compare elevation profiles of two GPX tracks",
+  "type": "module",
+  "scripts": {
+    "start": "web-dev-server --node-resolve --open --watch",
+    "build": "rollup -c",
+    "preview": "web-dev-server --root-dir dist --open",
+    "test": "web-test-runner",
+    "test:watch": "web-test-runner --watch",
+    "postinstall": "playwright install chromium"
+  },
+  "keywords": [
+    "gpx",
+    "elevation",
+    "comparison",
+    "lit",
+    "web-components"
+  ],
+  "author": "",
+  "license": "GPL-3.0-only",
+  "devDependencies": {
+    "@web/dev-server": "^0.4.1",
+    "@web/test-runner": "^0.18.0",
+    "@web/test-runner-playwright": "^0.11.0",
+    "@open-wc/testing": "^4.0.0",
+    "@rollup/plugin-node-resolve": "^15.2.3",
+    "@rollup/plugin-terser": "^0.4.4",
+    "playwright": "^1.48.0",
+    "rollup": "^4.9.6",
+    "rollup-plugin-copy": "^3.5.0"
+  },
+  "dependencies": {
+    "lit": "^3.1.0",
+    "chart.js": "^4.4.1"
+  },
+  "packageManager": "pnpm@10.30.1+sha512.3590e550d5384caa39bd5c7c739f72270234b2f6059e13018f975c313b1eb9fefcc09714048765d4d9efe961382c312e624572c0420762bdc5d5940cdf9be73a"
+}
